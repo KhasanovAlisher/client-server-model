@@ -1,7 +1,7 @@
-# Http-like Client-Server Model
+# Http-like Client-Server Model in Linux-C
 
 ## Description
-This is a high level API for the typical http-like one-way client-server model. Sockets have been used to implement the networking functionality which has been simplified
+This is a high level API for Linux written in C for the typical http-like one-way client-server model. Sockets have been used to implement the networking functionality which has been simplified
 into an easy-to-use interface.
 
 ## Compilation
