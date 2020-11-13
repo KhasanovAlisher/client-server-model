@@ -15,7 +15,8 @@ To clean up object files
 
 ## Documentation
 Extensive description of each function can be found in the header files of the library.   
-Configurable variables are in the z_net_common.h and z_net_common_pvt.h files, implemented as defines.
+Configurable variables are in the 
+[z_net_common.h](z_net_lib/z_net_common.h) and [z_net_common_pvt.h](z_net_lib/z_net_common_pvt.h) files, implemented as defines.
 
 ## Author
 Doniyorbek "zDonik" Tokhirov
