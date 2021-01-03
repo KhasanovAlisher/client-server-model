@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS += -pthread
-LDFLAGS += -lsqlite3
+CFLAGS  += -pthread
+LDFLAGS += -ljson-c -lsqlite3
 
 
 default: room_rent

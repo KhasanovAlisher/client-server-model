@@ -11,5 +11,5 @@ add_executable(client
     z_net_lib/z_net_client.c
     )
 
-target_link_libraries(server pthread sqlite3)
+target_link_libraries(server pthread json-c sqlite3)
 target_link_libraries(client pthread)
