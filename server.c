@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Couldn't open database: %s", sqlite3_errmsg(db));
         return -1;
     }
-	
+	on_receive(1, "list", db);
     // starting server
     int exit_code = start_server(port, on_receive, db);    // starting to listen for possible client connections
 
@@ -57,12 +57,15 @@ void on_receive(int client_id, const char *msg, void *param)
     json_object *json_array = json_object_new_array();
 
     // parsing request
+    // str.tock
     char *token = strtok(cache, " ");
+    
     int shouldReply = 1;
     if (strcmp(token, "list") == 0) {
-        shouldReply = execute_query(db, "select * from rooms", json_array);
+        shouldReply = execute_query(db, "select * from houses", json_array);
     } else if (strcmp(token, "my_list") == 0) {
         // build up a list of client's rooms
+        char *client_id = strtok(NULL, " ");
     } else if (strcmp(token, "create") == 0) {
         // create a room
     } else if (strcmp(token, "update") == 0) {
@@ -75,7 +78,7 @@ void on_receive(int client_id, const char *msg, void *param)
         printf("Request command was not recognized: %s!\n", token);
         shouldReply = 0;
     }
-
+	printf(json_object_to_json_string(json_array));
     // sending reply
     if (shouldReply) {
         send_message(client_id, json_object_to_json_string(json_array));
@@ -104,6 +107,9 @@ int execute_query(sqlite3 *db, const char *query, json_object *json_array)
 }
 
 // callback for query result
+//size - Number of column
+//data - Tuple atributes
+//columns - columns name
 int process_result(void *param, int size, char **data, char **columns)
 {
     json_object *obj = (json_object *)param;
