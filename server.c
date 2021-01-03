@@ -7,8 +7,15 @@
 
 #define DB_NAME "mydb.db"
 
-// callback functions
+// receive callback function
 void on_receive(int client_id, const char *msg, void *param);
+
+// executes sqlite statement, while handling errors
+int execute_query(sqlite3 *db, const char *query, json_object *json_array);
+
+// callback for query result
+int process_result(void *param, int size, char **data, char **columns);
+
 
 // optionally first command-line argument can be provided to be port otherwise use default port
 int main(int argc, char *argv[])
@@ -34,6 +41,7 @@ int main(int argc, char *argv[])
     return exit_code;
 }
 
+
 // callback function called when request is received from client, simply resends message back to client
 void on_receive(int client_id, const char *msg, void *param)
 {
@@ -45,10 +53,14 @@ void on_receive(int client_id, const char *msg, void *param)
     char *cache = (char *)malloc(strlen(msg) + 1);
     strcpy(cache, msg);
 
+    // test constructing json object
+    json_object *json_array = json_object_new_array();
+
     // parsing request
     char *token = strtok(cache, " ");
+    int shouldReply = 1;
     if (strcmp(token, "list") == 0) {
-        // build up a list of rooms
+        shouldReply = execute_query(db, "select * from rooms", json_array);
     } else if (strcmp(token, "my_list") == 0) {
         // build up a list of client's rooms
     } else if (strcmp(token, "create") == 0) {
@@ -61,19 +73,42 @@ void on_receive(int client_id, const char *msg, void *param)
         // rent a room
     } else {
         printf("Request command was not recognized: %s!\n", token);
-        return;
+        shouldReply = 0;
     }
 
-    // freeing cached message
-    free(cache);
-
-    // test constructing json object
-    json_object *obj = json_object_new_object();
-    json_object_object_add(obj, "mykey", json_object_new_string("myvalue"));
-
     // sending reply
-    send_message(client_id, json_object_to_json_string(obj));
+    if (shouldReply) {
+        send_message(client_id, json_object_to_json_string(json_array));
+    }
 
-    // deleting object
-    json_object_put(obj);
+    // cleanup
+    json_object_put(json_array);
+    free(cache);
+}
+
+// wrapper for executing sql queries
+int execute_query(sqlite3 *db, const char *query, json_object *json_array)
+{
+    json_object *obj = json_object_new_object();
+    char *errmsg = 0; // initializing into non-NULL
+    int err_code = sqlite3_exec(db, query, process_result, obj, &errmsg);
+    if (err_code != SQLITE_OK && errmsg != NULL) {
+        fprintf(stderr, "Couldn't execute query: %s", errmsg);
+        json_object_put(obj);
+    } else {
+        json_object_array_add(json_array, obj);
+    }
+
+    sqlite3_free(errmsg);
+    return err_code;
+}
+
+// callback for query result
+int process_result(void *param, int size, char **data, char **columns)
+{
+    json_object *obj = (json_object *)param;
+
+    for (int i = 0; i < size; ++i) {
+        json_object_object_add(obj, columns[i], json_object_new_string(data[i] ? data[i] : "NULL"));
+    }
 }
