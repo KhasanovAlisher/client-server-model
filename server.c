@@ -29,10 +29,12 @@ int main(int argc, char *argv[])
     // opening database
     sqlite3 *db;
     if (sqlite3_open_v2(DB_NAME, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
-        fprintf(stderr, "Couldn't open database: %s", sqlite3_errmsg(db));
+        fprintf(stderr, "Couldn't open database: %s\n", sqlite3_errmsg(db));
         return -1;
     }
-	on_receive(1, "list", db);
+
+    on_receive(1, "list", db); // DEBUG
+
     // starting server
     int exit_code = start_server(port, on_receive, db);    // starting to listen for possible client connections
 
@@ -57,12 +59,10 @@ void on_receive(int client_id, const char *msg, void *param)
     json_object *json_array = json_object_new_array();
 
     // parsing request
-    // str.tock
     char *token = strtok(cache, " ");
-    
-    int shouldReply = 1;
+    int failed = 0;
     if (strcmp(token, "list") == 0) {
-        shouldReply = execute_query(db, "select * from houses", json_array);
+        failed = execute_query(db, "select * from houses", json_array);
     } else if (strcmp(token, "my_list") == 0) {
         // build up a list of client's rooms
         char *client_id = strtok(NULL, " ");
@@ -76,11 +76,13 @@ void on_receive(int client_id, const char *msg, void *param)
         // rent a room
     } else {
         printf("Request command was not recognized: %s!\n", token);
-        shouldReply = 0;
+        failed = 0;
     }
-	printf(json_object_to_json_string(json_array));
+
+    printf("Json array:\n%s\n", json_object_to_json_string_ext(json_array, JSON_C_TO_STRING_PRETTY)); // DEBUG
+
     // sending reply
-    if (shouldReply) {
+    if (!failed) {
         send_message(client_id, json_object_to_json_string(json_array));
     }
 
@@ -92,31 +94,26 @@ void on_receive(int client_id, const char *msg, void *param)
 // wrapper for executing sql queries
 int execute_query(sqlite3 *db, const char *query, json_object *json_array)
 {
-    json_object *obj = json_object_new_object();
     char *errmsg = 0; // initializing into non-NULL
-    int err_code = sqlite3_exec(db, query, process_result, obj, &errmsg);
+    int err_code = sqlite3_exec(db, query, process_result, json_array, &errmsg);
     if (err_code != SQLITE_OK && errmsg != NULL) {
         fprintf(stderr, "Couldn't execute query: %s", errmsg);
-        json_object_put(obj);
-    } else {
-        json_object_array_add(json_array, obj);
     }
-
     sqlite3_free(errmsg);
     return err_code;
 }
 
 // callback for query result
-//size - Number of column
-//data - Tuple atributes
-//columns - columns name
+// size - Number of columns
+// data - Tuple atributes
+// columns - column names
 int process_result(void *param, int size, char **data, char **columns)
 {
-    json_object *obj = (json_object *)param;
-
+    json_object *json_array = (json_object *)param;
+    json_object *obj = json_object_new_object();
     for (int i = 0; i < size; ++i) {
         json_object_object_add(obj, columns[i], json_object_new_string(data[i] ? data[i] : "NULL"));
     }
-
+    json_object_array_add(json_array, obj);
     return 0;
 }
