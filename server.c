@@ -1,20 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <json-c/json.h>
-#include <sqlite3.h>
 #include "z_net_lib/z_net_server.h"
+#include "sql_manipulations.h"
 
 #define DB_NAME "os_db.db"
 
 // receive callback function
 void on_receive(int client_id, const char *msg, void *param);
-
-// executes sqlite statement, while handling errors
-int execute_query(sqlite3 *db, const char *query, json_object *json_array);
-
-// callback for query result
-int process_result(void *param, int size, char **data, char **columns);
 
 
 // optionally first command-line argument can be provided to be port otherwise use default port
@@ -89,31 +82,4 @@ void on_receive(int client_id, const char *msg, void *param)
     // cleanup
     json_object_put(json_array);
     free(cache);
-}
-
-// wrapper for executing sql queries
-int execute_query(sqlite3 *db, const char *query, json_object *json_array)
-{
-    char *errmsg = 0; // initializing into non-NULL
-    int err_code = sqlite3_exec(db, query, process_result, json_array, &errmsg);
-    if (err_code != SQLITE_OK && errmsg != NULL) {
-        fprintf(stderr, "Couldn't execute query: %s", errmsg);
-    }
-    sqlite3_free(errmsg);
-    return err_code;
-}
-
-// callback for query result
-// size - Number of columns
-// data - Tuple atributes
-// columns - column names
-int process_result(void *param, int size, char **data, char **columns)
-{
-    json_object *json_array = (json_object *)param;
-    json_object *obj = json_object_new_object();
-    for (int i = 0; i < size; ++i) {
-        json_object_object_add(obj, columns[i], json_object_new_string(data[i] ? data[i] : "NULL"));
-    }
-    json_object_array_add(json_array, obj);
-    return 0;
 }

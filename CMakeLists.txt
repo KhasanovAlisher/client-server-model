@@ -4,6 +4,7 @@ project(room_rent LANGUAGES C)
 
 add_executable(server
     server.c
+    sql_manipulations.c
     z_net_lib/z_net_server.c
     )
 add_executable(client
