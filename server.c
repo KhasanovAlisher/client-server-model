@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sqlite3.h>
 #include "z_net_lib/z_net_server.h"
 
 // callback functions
