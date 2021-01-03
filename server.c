@@ -111,4 +111,6 @@ int process_result(void *param, int size, char **data, char **columns)
     for (int i = 0; i < size; ++i) {
         json_object_object_add(obj, columns[i], json_object_new_string(data[i] ? data[i] : "NULL"));
     }
+
+    return 0;
 }
