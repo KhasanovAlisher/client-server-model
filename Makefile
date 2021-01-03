@@ -1,11 +1,12 @@
 CC = gcc
-CFLAGS  = -pthread
+CFLAGS  += -pthread
+LDFLAGS += -ljson-c
 
 
 default: room_rent
 
 room_rent:  z_net_server.o z_net_client.o server.o client.o 
-	$(CC) $(CFLAGS) -o server z_net_server.o server.o
+	$(CC) $(CFLAGS) -o server z_net_server.o server.o $(LDFLAGS)
 	$(CC) $(CFLAGS) -o client z_net_client.o client.o
 
 
