@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
     // opening database
     sqlite3 *db;
-    if (sqlite3_open(DB_NAME, &db) != SQLITE_OK) {
+    if (sqlite3_open_v2(DB_NAME, &db, SQLITE_OPEN_READWRITE, NULL) != SQLITE_OK) {
         fprintf(stderr, "Couldn't open database: %s", sqlite3_errmsg(db));
         return -1;
     }
