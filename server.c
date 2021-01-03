@@ -5,7 +5,7 @@
 #include <sqlite3.h>
 #include "z_net_lib/z_net_server.h"
 
-#define DB_NAME "mydb.db"
+#define DB_NAME "os_db.db"
 
 // receive callback function
 void on_receive(int client_id, const char *msg, void *param);
