@@ -123,13 +123,23 @@ void login(sqlite3 *db, int *client_id, json_object **result)
     json_object_put(clients);
 }
 
-void build_list(sqlite3 *db, json_object **result)
+void build_list(int client_id, sqlite3 *db, json_object **result)
 {
     *result = json_object_new_array();
-    if (execute_query(db, "select * from houses", *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+    if (client_id < 0) {
+        if (execute_query(db, "select * from houses where isBusy=0", *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
+    } else {
+        char query[200];
+        sprintf(query, "select * from houses where isBusy=0 and user_id<>%d", client_id);
+        if (execute_query(db, query, *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
     }
 }
 
@@ -223,7 +233,24 @@ void remove_room(int client_id, sqlite3 *db, json_object **result)
 
 void rent_room(int client_id, sqlite3 *db, json_object **result)
 {
-    // rent a room
+    if (!is_logged_in(client_id, result)) {
+        return;
+    }
+
+    char *house_id = strtok(NULL, " ");
+
+    char query[200];
+    sprintf(query, "update houses set isBusy=1 where house_id=%s", house_id);
+    *result = json_object_new_array();
+    if (execute_query(db, query, *result)) {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("could not rent house"));
+    } else {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "info", json_object_new_string("successfully rented the house"));
+    }
 }
 
 // ---- end ----
@@ -248,7 +275,7 @@ void on_receive(int session_id, int *client_id, const char *msg, void *param)
     if (strcmp(token, "login") == 0) {
         login(db, client_id, &result);
     } else if (strcmp(token, "list") == 0) {
-        build_list(db, &result);
+        build_list(*client_id, db, &result);
     } else if (strcmp(token, "my_list") == 0) {
         build_client_list(*client_id, db, &result);
     } else if (strcmp(token, "create") == 0) {
