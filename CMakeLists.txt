@@ -4,6 +4,7 @@ project(room_rent LANGUAGES C)
 
 add_executable(server
     server.c
+    sql_manipulations.c
     z_net_lib/z_net_server.c
     )
 add_executable(client
@@ -11,5 +12,5 @@ add_executable(client
     z_net_lib/z_net_client.c
     )
 
-target_link_libraries(server pthread json-c)
+target_link_libraries(server pthread json-c sqlite3)
 target_link_libraries(client pthread)
