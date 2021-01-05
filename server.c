@@ -175,7 +175,7 @@ void create_room(int client_id, sqlite3 *db, json_object **result)
     if (execute_query(db, query, *result)) {
         json_object_put(*result);
         *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("could not add client"));
+        json_object_object_add(*result, "error", json_object_new_string("could not add house"));
     } else {
         json_object_put(*result);
         build_client_list(client_id, db, result);
@@ -184,7 +184,36 @@ void create_room(int client_id, sqlite3 *db, json_object **result)
 
 void update_room(int client_id, sqlite3 *db, json_object **result)
 {
-    // update a room
+    if (!is_logged_in(client_id, result)) {
+        return;
+    }
+
+    char *house_id = strtok(NULL, " ");
+    char *comment = strtok(NULL, " ");
+    char *price = strtok(NULL, " ");
+    char *floor = strtok(NULL, " ");
+    char *no_rooms = strtok(NULL, " ");
+
+    // processing commment: replacing '_' with ' '
+    int comment_len = strlen(comment);
+    for (int i = 0; i < comment_len; ++i) {
+        if (comment[i] == '_') {
+            comment[i] = ' ';
+        }
+    }
+
+    char query[200];
+    sprintf(query, "update houses set comment='%s', price=%s, floor=%s, no_rooms=%s where house_id=%s",
+            comment, price, floor, no_rooms, house_id);
+    *result = json_object_new_array();
+    if (execute_query(db, query, *result)) {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("could not update house"));
+    } else {
+        json_object_put(*result);
+        build_client_list(client_id, db, result);
+    }
 }
 
 void remove_room(int client_id, sqlite3 *db, json_object **result)
