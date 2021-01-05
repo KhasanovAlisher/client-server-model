@@ -169,7 +169,7 @@ void create_room(int client_id, sqlite3 *db, json_object **result)
     }
 
     char query[200];
-    sprintf(query, "insert into users (user_id, isBusy, comment, price, floor, no_rooms) "
+    sprintf(query, "insert into houses (user_id, isBusy, comment, price, floor, no_rooms) "
                    "values(%d, %s, '%s', %s, %s, %s)", client_id, "0", comment, price, floor, no_rooms);
     *result = json_object_new_array();
     if (execute_query(db, query, *result)) {
