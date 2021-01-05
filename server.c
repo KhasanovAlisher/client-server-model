@@ -64,7 +64,7 @@ void login(sqlite3 *db, int *client_id, json_object **result)
             if (strcmp(key, "id") == 0) {
                 captured_id = atoi(json_object_get_string(val));
             } else if (strcmp(key, "pwd") == 0) {
-                if (strcmp(pass, json_object_get_string(val))) {
+                if (strcmp(pass, json_object_get_string(val)) == 0) {
                     *client_id = captured_id;
                     *result = json_object_new_object();
                     json_object_object_add(*result, "info", json_object_new_string("successfully logged in client"));
@@ -91,7 +91,7 @@ void login(sqlite3 *db, int *client_id, json_object **result)
             json_object *maxId_object = json_object_array_get_idx(maxId_array, 0);
             json_object_object_foreach(maxId_object, key, val) {
                 if (strcmp(key, "max_id") == 0) {
-                    maxId = atoi(json_object_get_string(val));
+                    maxId = atoi(json_object_get_string(val)) + 1;
                 }
             }
         }
