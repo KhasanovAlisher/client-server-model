@@ -35,6 +35,17 @@ int main(int argc, char *argv[])
 }
 
 
+// checks if the client_id is valid (logged in) and updates result if not logged in
+int is_logged_in(int client_id, json_object **result)
+{
+    if (client_id < 0) {
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("client not logged in"));
+        return 0;
+    }
+    return 1;
+}
+
 // --- functions to handle commands ----
 
 void login(sqlite3 *db, int *client_id, json_object **result)
@@ -75,11 +86,8 @@ void login(sqlite3 *db, int *client_id, json_object **result)
             }
         }
     } else {
-        memset(query, 0, sizeof(query));
-        strcpy(query, "select max(id) as max_id from users");
         json_object *maxId_array = json_object_new_array();
-
-        if (execute_query(db, query, maxId_array)) {
+        if (execute_query(db, "select max(id) as max_id from users", maxId_array)) {
             json_object_put(maxId_array);
             *result = json_object_new_object();
             json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
@@ -127,17 +135,51 @@ void build_list(sqlite3 *db, json_object **result)
 
 void build_client_list(int client_id, sqlite3 *db, json_object **result)
 {
-    if (client_id >= 0) {
-        // build up a list of client's rooms
-    } else {
+    if (!is_logged_in(client_id, result)) {
+        return;
+    }
+
+    char query[200];
+    sprintf(query, "select * from houses where user_id=%d", client_id);
+    *result = json_object_new_array();
+    if (execute_query(db, query, *result)) {
+        json_object_put(*result);
         *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("client not logged in"));
+        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
     }
 }
 
 void create_room(int client_id, sqlite3 *db, json_object **result)
 {
-    // create a room
+    if (!is_logged_in(client_id, result)) {
+        return;
+    }
+
+    char *comment = strtok(NULL, " ");
+    char *price = strtok(NULL, " ");
+    char *floor = strtok(NULL, " ");
+    char *no_rooms = strtok(NULL, " ");
+
+    // processing commment: replacing '_' with ' '
+    int comment_len = strlen(comment);
+    for (int i = 0; i < comment_len; ++i) {
+        if (comment[i] == '_') {
+            comment[i] = ' ';
+        }
+    }
+
+    char query[200];
+    sprintf(query, "insert into users (user_id, isBusy, comment, price, floor, no_rooms) "
+                   "values(%d, %s, '%s', %s, %s, %s)", client_id, "0", comment, price, floor, no_rooms);
+    *result = json_object_new_array();
+    if (execute_query(db, query, *result)) {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("could not add client"));
+    } else {
+        json_object_put(*result);
+        build_client_list(client_id, db, result);
+    }
 }
 
 void update_room(int client_id, sqlite3 *db, json_object **result)
