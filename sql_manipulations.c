@@ -12,7 +12,7 @@ int execute_query(sqlite3 *db, const char *query, json_object *json_array)
     char *errmsg = 0; // initializing into non-NULL
     int err_code = sqlite3_exec(db, query, process_result, json_array, &errmsg);
     if (err_code != SQLITE_OK && errmsg != NULL) {
-        fprintf(stderr, "Couldn't execute query: %s", errmsg);
+        fprintf(stderr, "Couldn't execute query: %s\n", errmsg);
     }
     sqlite3_free(errmsg);
     return err_code;
