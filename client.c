@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "z_net_lib/z_net_client.h"
 
@@ -56,11 +57,23 @@ void on_server_found(struct server_address *serv_addr, void *param)
     printf("Server found: %s:%d\n", serv_addr->ip, serv_addr->port);
 
     struct serv_found_info *serv_found_info = (struct serv_found_info *)param;
-    if (connect_to_server(serv_addr->ip, serv_addr->port, serv_found_info->net_info) < 0)    // connecting to server
-        perror("Couldn't connect to server");
-
     stop_server_search(serv_found_info->sserv_info);    // stop searching for servers after first is found
-    request_async(serv_found_info->net_info, "Random message that I wanted to tell", on_receive, NULL);    // sending request
+
+    if (connect_to_server(serv_addr->ip, serv_addr->port, serv_found_info->net_info) < 0) {    // connecting to server
+        perror("Couldn't connect to server");
+        return;
+    }
+
+    char message[200];
+    while (fgets(message, sizeof(message), stdin)) {
+        message[strlen(message) - 1] = '\0';
+        if (strcmp(message, "quit") == 0) {
+            return;
+        }
+
+        request_async(serv_found_info->net_info, message, on_receive, NULL);    // sending request
+        memset(message, 0, sizeof(message));
+    }
 }
 
 // callback prints received reply from server
