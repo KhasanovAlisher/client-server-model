@@ -37,11 +37,11 @@ int main(int argc, char *argv[])
 
 // --- functions to handle commands ----
 
-void login(sqlite3 *db, int *client_id, json_object *result)
+void login(sqlite3 *db, int *client_id, json_object **result)
 {
     if (*client_id >= 0) {
-        result = json_object_new_object();
-        json_object_object_add(result, "error", json_object_new_string("client already logged in"));
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("client already logged in"));
         return;
     }
 
@@ -50,10 +50,10 @@ void login(sqlite3 *db, int *client_id, json_object *result)
     char query[100];
     sprintf(query, "select id, pwd from users where name='%s'", login);
     json_object *clients = json_object_new_array();
-    if (!execute_query(db, query, clients)) {
+    if (execute_query(db, query, clients)) {
         json_object_put(clients);
-        result = json_object_new_object();
-        json_object_object_add(result, "error", json_object_new_string("server error: sql query failed"));
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
         return;
     }
 
@@ -66,11 +66,11 @@ void login(sqlite3 *db, int *client_id, json_object *result)
             } else if (strcmp(key, "pwd") == 0) {
                 if (strcmp(pass, json_object_get_string(val))) {
                     *client_id = captured_id;
-                    result = json_object_new_object();
-                    json_object_object_add(result, "info", json_object_new_string("successfully logged in client"));
+                    *result = json_object_new_object();
+                    json_object_object_add(*result, "info", json_object_new_string("successfully logged in client"));
                 } else {
-                    result = json_object_new_object();
-                    json_object_object_add(result, "error", json_object_new_string("incorrect password"));
+                    *result = json_object_new_object();
+                    json_object_object_add(*result, "error", json_object_new_string("incorrect password"));
                 }
             }
         }
@@ -79,10 +79,10 @@ void login(sqlite3 *db, int *client_id, json_object *result)
         strcpy(query, "select max(id) as max_id from users");
         json_object *maxId_array = json_object_new_array();
 
-        if (!execute_query(db, query, maxId_array)) {
+        if (execute_query(db, query, maxId_array)) {
             json_object_put(maxId_array);
-            result = json_object_new_object();
-            json_object_object_add(result, "error", json_object_new_string("server error: sql query failed"));
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
             return;
         }
 
@@ -99,58 +99,58 @@ void login(sqlite3 *db, int *client_id, json_object *result)
         // registering new client
         memset(query, 0, sizeof(query));
         sprintf(query, "insert into users (id, name, pwd) values(%d, '%s', %s)", maxId, login, pass);
-        result = json_object_new_array();
-        if (!execute_query(db, query, result)) {
-            json_object_put(result);
-            result = json_object_new_object();
-            json_object_object_add(result, "error", json_object_new_string("could not add client"));
+        *result = json_object_new_array();
+        if (execute_query(db, query, *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("could not add client"));
         } else {
             *client_id = maxId;
-            json_object_put(result);
-            result = json_object_new_object();
-            json_object_object_add(result, "info", json_object_new_string("successfully registered client"));
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "info", json_object_new_string("successfully registered client"));
         }
     }
 
     json_object_put(clients);
 }
 
-void build_list(sqlite3 *db, json_object *result)
+void build_list(sqlite3 *db, json_object **result)
 {
-    result = json_object_new_array();
-    if (!execute_query(db, "select * from houses", result)) {
-        json_object_put(result);
-        result = json_object_new_object();
-        json_object_object_add(result, "error", json_object_new_string("server error: sql query failed"));
+    *result = json_object_new_array();
+    if (execute_query(db, "select * from houses", *result)) {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
     }
 }
 
-void build_client_list(int client_id, sqlite3 *db, json_object *result)
+void build_client_list(int client_id, sqlite3 *db, json_object **result)
 {
     if (client_id >= 0) {
         // build up a list of client's rooms
     } else {
-        result = json_object_new_object();
-        json_object_object_add(result, "error", json_object_new_string("client not logged in"));
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("client not logged in"));
     }
 }
 
-void create_room(int client_id, sqlite3 *db, json_object *result)
+void create_room(int client_id, sqlite3 *db, json_object **result)
 {
     // create a room
 }
 
-void update_room(int client_id, sqlite3 *db, json_object *result)
+void update_room(int client_id, sqlite3 *db, json_object **result)
 {
     // update a room
 }
 
-void remove_room(int client_id, sqlite3 *db, json_object *result)
+void remove_room(int client_id, sqlite3 *db, json_object **result)
 {
     // delete a room
 }
 
-void rent_room(int client_id, sqlite3 *db, json_object *result)
+void rent_room(int client_id, sqlite3 *db, json_object **result)
 {
     // rent a room
 }
@@ -163,7 +163,7 @@ void on_receive(int session_id, int *client_id, const char *msg, void *param)
 {
     sqlite3 *db = (sqlite3 *)param;
 
-    printf("[Client %d]: %s\n", *client_id, msg);
+    printf("[Client %d]: %s\n", session_id, msg);
 
     // caching message
     char *cache = (char *)malloc(strlen(msg) + 1);
@@ -174,20 +174,20 @@ void on_receive(int session_id, int *client_id, const char *msg, void *param)
 
     // parsing request
     char *token = strtok(cache, " ");
-    if (strcmp(token, "login")) {
-        login(db, client_id, result);
+    if (strcmp(token, "login") == 0) {
+        login(db, client_id, &result);
     } else if (strcmp(token, "list") == 0) {
-        build_list(db, result);
+        build_list(db, &result);
     } else if (strcmp(token, "my_list") == 0) {
-        build_client_list(*client_id, db, result);
+        build_client_list(*client_id, db, &result);
     } else if (strcmp(token, "create") == 0) {
-        create_room(*client_id, db, result);
+        create_room(*client_id, db, &result);
     } else if (strcmp(token, "update") == 0) {
-        update_room(*client_id, db, result);
+        update_room(*client_id, db, &result);
     } else if (strcmp(token, "delete") == 0) {
-        remove_room(*client_id, db, result);
+        remove_room(*client_id, db, &result);
     } else if (strcmp(token, "rent") == 0) {
-        rent_room(*client_id, db, result);
+        rent_room(*client_id, db, &result);
     } else {
         printf("Request command was not recognized: %s!\n", token);
         result = json_object_new_object();
