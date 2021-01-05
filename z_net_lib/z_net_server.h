@@ -31,6 +31,6 @@ int send_message(int client_id, const char *msg);
  * the client and an additional param. param parameter is passed on to the callback function so custom structures can be used. On return,
  * the function either returns 0 on succes or -1 on failure, and reason for failure is printed in perror
  */
-int start_server(int port, void (*on_receive)(int client_id, const char *msg, void *param), void *param);
+int start_server(int port, void (*on_receive)(int, int *, const char *, void *), void *param);
 
 #endif

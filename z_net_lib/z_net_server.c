@@ -35,6 +35,7 @@ void *connection_thread(void *rec_info_ptr)
 	
 	int read_size;
 	char message[2000];
+    int client_id = -1;
 	
 	// Server start
 	while (1) {
@@ -44,7 +45,7 @@ void *connection_thread(void *rec_info_ptr)
 			break;
 		
 		// Calling on_receive callback function
-		((void (*)(int, const char *, void *param))rec_info->on_receive_ptr)(rec_info->socket, message, rec_info->param);
+        ((void (*)(int, int *, const char *, void *param))rec_info->on_receive_ptr)(rec_info->socket, &client_id, message, rec_info->param);
 	}
 	
 	printf("Client [%d] disconnected\n", rec_info->socket);
@@ -264,7 +265,7 @@ int start_broadcast_local_ip(int port)
     return 0;
 }
 
-int start_server(int port, void (*on_receive)(int, const char *, void *), void *param)
+int start_server(int port, void (*on_receive)(int, int *, const char *, void *), void *param)
 {
 	// Create socket
 	int socket_desc = socket(AF_INET, SOCK_STREAM, 0);
