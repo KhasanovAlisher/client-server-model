@@ -122,7 +122,23 @@ void login(sqlite3 *db, int *client_id, json_object **result)
     json_object_put(clients);
 }
 
-void build_list(int client_id, sqlite3 *db, json_object **result)
+void build_all_list(int client_id, sqlite3 *db, json_object **result)
+{
+    *result = json_object_new_array();
+    if (client_id == 0) {
+        if (execute_query(db, "select * from houses", *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
+    } else {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+    }
+}
+
+void build_not_busy_list(int client_id, sqlite3 *db, json_object **result)
 {
     *result = json_object_new_array();
     if (client_id < 0) {
