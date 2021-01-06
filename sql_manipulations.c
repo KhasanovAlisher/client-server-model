@@ -7,11 +7,11 @@
 #include "sql_manipulations.h"
 
 // checks if the client_id is valid (logged in) and updates result if not logged in
-int is_logged_in(int client_id, json_object **result)
+int is_logged_in(int client_id, json_object *result)
 {
     if (client_id < 0) {
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("client not logged in"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("client not logged in"));
         return 0;
     }
     return 1;
@@ -39,6 +39,10 @@ int execute_query(sqlite3 *db, const char *query, json_object *json_array)
 int process_result(void *param, int size, char **data, char **columns)
 {
     json_object *json_array = (json_object *)param;
+    if (json_array == NULL) {
+        return 0;
+    }
+
     json_object *obj = json_object_new_object();
     for (int i = 0; i < size; ++i) {
         json_object_object_add(obj, columns[i], json_object_new_string(data[i] ? data[i] : "NULL"));
@@ -47,11 +51,11 @@ int process_result(void *param, int size, char **data, char **columns)
     return 0;
 }
 
-void login(sqlite3 *db, int *client_id, json_object **result)
+void login(sqlite3 *db, int *client_id, json_object *result)
 {
     if (*client_id >= 0) {
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("client already logged in"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("client already logged in"));
         return;
     }
 
@@ -62,8 +66,8 @@ void login(sqlite3 *db, int *client_id, json_object **result)
     json_object *clients = json_object_new_array();
     if (execute_query(db, query, clients)) {
         json_object_put(clients);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
         return;
     }
 
@@ -76,11 +80,11 @@ void login(sqlite3 *db, int *client_id, json_object **result)
             } else if (strcmp(key, "pwd") == 0) {
                 if (strcmp(pass, json_object_get_string(val)) == 0) {
                     *client_id = captured_id;
-                    *result = json_object_new_object();
-                    json_object_object_add(*result, "info", json_object_new_string("successfully logged in client"));
+                    json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+                    json_object_object_add(result, "message", json_object_new_string("successfully logged in client"));
                 } else {
-                    *result = json_object_new_object();
-                    json_object_object_add(*result, "error", json_object_new_string("incorrect password"));
+                    json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+                    json_object_object_add(result, "message", json_object_new_string("incorrect password"));
                 }
             }
         }
@@ -88,8 +92,8 @@ void login(sqlite3 *db, int *client_id, json_object **result)
         json_object *maxId_array = json_object_new_array();
         if (execute_query(db, "select max(id) as max_id from users", maxId_array)) {
             json_object_put(maxId_array);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
             return;
         }
 
@@ -106,95 +110,103 @@ void login(sqlite3 *db, int *client_id, json_object **result)
         // registering new client
         memset(query, 0, sizeof(query));
         sprintf(query, "insert into users (id, name, pwd) values(%d, '%s', %s)", maxId, login, pass);
-        *result = json_object_new_array();
-        if (execute_query(db, query, *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("could not add client"));
+        if (execute_query(db, query, NULL)) {
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("could not add client"));
         } else {
             *client_id = maxId;
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "info", json_object_new_string("successfully registered client"));
+            json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+            json_object_object_add(result, "message", json_object_new_string("successfully registered client"));
         }
     }
 
     json_object_put(clients);
 }
 
-void build_all_houses_list(int client_id, sqlite3 *db, json_object **result)
+void build_all_houses_list(int client_id, sqlite3 *db, json_object *result)
 {
     if (client_id == 0) {
-        *result = json_object_new_array();
-        if (execute_query(db, "select * from houses", *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        json_object *query_result = json_object_new_array();
+        if (execute_query(db, "select * from houses", query_result)) {
+            json_object_put(query_result);
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
+        } else {
+            json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+            json_object_object_add(result, "message", json_object_new_string("successfully retrieved query result"));
+            json_object_object_add(result, "result", query_result);
         }
     } else {
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("current client is not admin or not logged in"));
     }
 }
 
-void build_users_list(int client_id, sqlite3 *db, json_object **result)
+void build_users_list(int client_id, sqlite3 *db, json_object *result)
 {
     if (client_id == 0) {
-        *result = json_object_new_array();
-        if (execute_query(db, "select id, name from users where id<>0", *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        json_object *query_result = json_object_new_array();
+        if (execute_query(db, "select id, name from users where id<>0", query_result)) {
+            json_object_put(query_result);
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
+        } else {
+            json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+            json_object_object_add(result, "message", json_object_new_string("successfully retrieved query result"));
+            json_object_object_add(result, "result", query_result);
         }
     } else {
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("current client is not admin or not logged in"));
     }
 }
 
-void remove_user(int client_id, sqlite3 *db, json_object **result)
+void remove_user(int client_id, sqlite3 *db, json_object *result)
 {
     if (client_id == 0) {
-        *result = json_object_new_array();
         char *user_id = strtok(NULL, " ");
         char query[200];
         sprintf(query, "delete from users where id=%s", user_id);
-        if (execute_query(db, query, *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        if (execute_query(db, query, NULL)) {
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
         } else {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "info", json_object_new_string("successfully removed the user"));
+            json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+            json_object_object_add(result, "message", json_object_new_string("successfully removed the user"));
         }
     } else {
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("current client is not admin or not logged in"));
     }
 }
 
-void build_not_busy_houses_list(int client_id, sqlite3 *db, json_object **result)
+void build_not_busy_houses_list(int client_id, sqlite3 *db, json_object *result)
 {
-    *result = json_object_new_array();
+    json_object *query_result = json_object_new_array();
     if (client_id < 0) {
-        if (execute_query(db, "select * from houses where isBusy=0", *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        if (execute_query(db, "select * from houses where isBusy=0", query_result)) {
+            json_object_put(query_result);
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
+            return;
         }
     } else {
         char query[200];
         sprintf(query, "select * from houses where isBusy=0 and user_id<>%d", client_id);
-        if (execute_query(db, query, *result)) {
-            json_object_put(*result);
-            *result = json_object_new_object();
-            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        if (execute_query(db, query, query_result)) {
+            json_object_put(query_result);
+            json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+            json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
+            return;
         }
     }
+
+    json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+    json_object_object_add(result, "message", json_object_new_string("successfully retrieved query result"));
+    json_object_object_add(result, "result", query_result);
 }
 
-void build_client_houses_list(int client_id, sqlite3 *db, json_object **result)
+void build_client_houses_list(int client_id, sqlite3 *db, json_object *result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -202,15 +214,19 @@ void build_client_houses_list(int client_id, sqlite3 *db, json_object **result)
 
     char query[200];
     sprintf(query, "select * from houses where user_id=%d", client_id);
-    *result = json_object_new_array();
-    if (execute_query(db, query, *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+    json_object *query_result = json_object_new_array();
+    if (execute_query(db, query, query_result)) {
+        json_object_put(query_result);
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("server error: sql query failed"));
+    } else {
+        json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+        json_object_object_add(result, "message", json_object_new_string("successfully retrieved query result"));
+        json_object_object_add(result, "result", query_result);
     }
 }
 
-void create_room(int client_id, sqlite3 *db, json_object **result)
+void create_room(int client_id, sqlite3 *db, json_object *result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -232,18 +248,16 @@ void create_room(int client_id, sqlite3 *db, json_object **result)
     char query[200];
     sprintf(query, "insert into houses (user_id, isBusy, comment, price, floor, no_rooms) "
                    "values(%d, %s, '%s', %s, %s, %s)", client_id, "0", comment, price, floor, no_rooms);
-    *result = json_object_new_array();
-    if (execute_query(db, query, *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("could not add house"));
+    if (execute_query(db, query, NULL)) {
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("could not add house"));
     } else {
-        json_object_put(*result);
-        build_client_houses_list(client_id, db, result);
+        json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+        json_object_object_add(result, "message", json_object_new_string("successfully added house"));
     }
 }
 
-void update_room(int client_id, sqlite3 *db, json_object **result)
+void update_room(int client_id, sqlite3 *db, json_object *result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -266,18 +280,16 @@ void update_room(int client_id, sqlite3 *db, json_object **result)
     char query[200];
     sprintf(query, "update houses set comment='%s', price=%s, floor=%s, no_rooms=%s where house_id=%s",
             comment, price, floor, no_rooms, house_id);
-    *result = json_object_new_array();
-    if (execute_query(db, query, *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("could not update house"));
+    if (execute_query(db, query, NULL)) {
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("could not update house"));
     } else {
-        json_object_put(*result);
-        build_client_houses_list(client_id, db, result);
+        json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+        json_object_object_add(result, "message", json_object_new_string("successfully updated house"));
     }
 }
 
-void remove_room(int client_id, sqlite3 *db, json_object **result)
+void remove_room(int client_id, sqlite3 *db, json_object *result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -287,19 +299,16 @@ void remove_room(int client_id, sqlite3 *db, json_object **result)
 
     char query[200];
     sprintf(query, "delete from houses where house_id=%s", house_id);
-    *result = json_object_new_array();
-    if (execute_query(db, query, *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("could not remove house"));
+    if (execute_query(db, query, NULL)) {
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("could not remove house"));
     } else {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "info", json_object_new_string("successfully removed the house"));
+        json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+        json_object_object_add(result, "message", json_object_new_string("successfully removed house"));
     }
 }
 
-void rent_room(int client_id, sqlite3 *db, json_object **result)
+void rent_room(int client_id, sqlite3 *db, json_object *result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -309,14 +318,11 @@ void rent_room(int client_id, sqlite3 *db, json_object **result)
 
     char query[200];
     sprintf(query, "update houses set isBusy=1 where house_id=%s", house_id);
-    *result = json_object_new_array();
-    if (execute_query(db, query, *result)) {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "error", json_object_new_string("could not rent house"));
+    if (execute_query(db, query, NULL)) {
+        json_object_object_add(result, "success", json_object_new_boolean(FALSE));
+        json_object_object_add(result, "message", json_object_new_string("could not rent house"));
     } else {
-        json_object_put(*result);
-        *result = json_object_new_object();
-        json_object_object_add(*result, "info", json_object_new_string("successfully rented the house"));
+        json_object_object_add(result, "success", json_object_new_boolean(TRUE));
+        json_object_object_add(result, "message", json_object_new_string("successfully rented house"));
     }
 }
