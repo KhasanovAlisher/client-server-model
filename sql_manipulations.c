@@ -138,6 +138,22 @@ void build_all_list(int client_id, sqlite3 *db, json_object **result)
     }
 }
 
+void build_users_list(int client_id, sqlite3 *db, json_object **result)
+{
+    *result = json_object_new_array();
+    if (client_id == 0) {
+        if (execute_query(db, "select id, name from users where id<>0", *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
+    } else {
+        json_object_put(*result);
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+    }
+}
+
 void build_not_busy_list(int client_id, sqlite3 *db, json_object **result)
 {
     *result = json_object_new_array();

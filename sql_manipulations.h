@@ -13,6 +13,7 @@ int process_result(void *param, int size, char **data, char **columns);
 
 void login(sqlite3 *db, int *client_id, json_object **result);
 void build_all_list(int client_id, sqlite3 *db, json_object **result);
+void build_users_list(int client_id, sqlite3 *db, json_object **result);
 void build_not_busy_list(int client_id, sqlite3 *db, json_object **result);
 void build_client_list(int client_id, sqlite3 *db, json_object **result);
 void create_room(int client_id, sqlite3 *db, json_object **result);

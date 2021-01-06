@@ -54,6 +54,8 @@ void on_receive(int session_id, int *client_id, const char *msg, void *param)
         login(db, client_id, &result);
     } else if (strcmp(token, "all") == 0) {
         build_all_list(*client_id, db, &result);
+    } else if (strcmp(token, "users") == 0) {
+        build_users_list(*client_id, db, &result);
     } else if (strcmp(token, "list") == 0) {
         build_not_busy_list(*client_id, db, &result);
     } else if (strcmp(token, "my_list") == 0) {
