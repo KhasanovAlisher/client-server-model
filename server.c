@@ -52,17 +52,23 @@ void on_receive(int session_id, int *client_id, const char *msg, void *param)
     char *token = strtok(cache, " ");
     if (strcmp(token, "login") == 0) {
         login(db, client_id, &result);
-    } else if (strcmp(token, "list") == 0) {
-        build_list(*client_id, db, &result);
-    } else if (strcmp(token, "my_list") == 0) {
-        build_client_list(*client_id, db, &result);
-    } else if (strcmp(token, "create") == 0) {
+    } else if (strcmp(token, "all_houses") == 0) {
+        build_all_houses_list(*client_id, db, &result);
+    } else if (strcmp(token, "users") == 0) {
+        build_users_list(*client_id, db, &result);
+    } else if (strcmp(token, "delete_user") == 0) {
+        remove_user(*client_id, db, &result);
+    } else if (strcmp(token, "list_houses") == 0) {
+        build_not_busy_houses_list(*client_id, db, &result);
+    } else if (strcmp(token, "user_list_houses") == 0) {
+        build_client_houses_list(*client_id, db, &result);
+    } else if (strcmp(token, "create_house") == 0) {
         create_room(*client_id, db, &result);
-    } else if (strcmp(token, "update") == 0) {
+    } else if (strcmp(token, "update_house") == 0) {
         update_room(*client_id, db, &result);
-    } else if (strcmp(token, "delete") == 0) {
+    } else if (strcmp(token, "delete_house") == 0) {
         remove_room(*client_id, db, &result);
-    } else if (strcmp(token, "rent") == 0) {
+    } else if (strcmp(token, "rent_house") == 0) {
         rent_room(*client_id, db, &result);
     } else {
         printf("Request command was not recognized: %s!\n", token);

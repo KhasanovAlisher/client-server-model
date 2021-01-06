@@ -122,7 +122,59 @@ void login(sqlite3 *db, int *client_id, json_object **result)
     json_object_put(clients);
 }
 
-void build_list(int client_id, sqlite3 *db, json_object **result)
+void build_all_houses_list(int client_id, sqlite3 *db, json_object **result)
+{
+    if (client_id == 0) {
+        *result = json_object_new_array();
+        if (execute_query(db, "select * from houses", *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
+    } else {
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+    }
+}
+
+void build_users_list(int client_id, sqlite3 *db, json_object **result)
+{
+    if (client_id == 0) {
+        *result = json_object_new_array();
+        if (execute_query(db, "select id, name from users where id<>0", *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        }
+    } else {
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+    }
+}
+
+void remove_user(int client_id, sqlite3 *db, json_object **result)
+{
+    if (client_id == 0) {
+        *result = json_object_new_array();
+        char *user_id = strtok(NULL, " ");
+        char query[200];
+        sprintf(query, "delete from users where id=%s", user_id);
+        if (execute_query(db, query, *result)) {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "error", json_object_new_string("server error: sql query failed"));
+        } else {
+            json_object_put(*result);
+            *result = json_object_new_object();
+            json_object_object_add(*result, "info", json_object_new_string("successfully removed the user"));
+        }
+    } else {
+        *result = json_object_new_object();
+        json_object_object_add(*result, "error", json_object_new_string("current client is not admin or not logged in"));
+    }
+}
+
+void build_not_busy_houses_list(int client_id, sqlite3 *db, json_object **result)
 {
     *result = json_object_new_array();
     if (client_id < 0) {
@@ -142,7 +194,7 @@ void build_list(int client_id, sqlite3 *db, json_object **result)
     }
 }
 
-void build_client_list(int client_id, sqlite3 *db, json_object **result)
+void build_client_houses_list(int client_id, sqlite3 *db, json_object **result)
 {
     if (!is_logged_in(client_id, result)) {
         return;
@@ -187,7 +239,7 @@ void create_room(int client_id, sqlite3 *db, json_object **result)
         json_object_object_add(*result, "error", json_object_new_string("could not add house"));
     } else {
         json_object_put(*result);
-        build_client_list(client_id, db, result);
+        build_client_houses_list(client_id, db, result);
     }
 }
 
@@ -221,7 +273,7 @@ void update_room(int client_id, sqlite3 *db, json_object **result)
         json_object_object_add(*result, "error", json_object_new_string("could not update house"));
     } else {
         json_object_put(*result);
-        build_client_list(client_id, db, result);
+        build_client_houses_list(client_id, db, result);
     }
 }
 
